@@ -1,0 +1,80 @@
+# Import arcpy module
+import arcpy
+import sys
+import os
+import subprocess
+import shutil
+
+
+def fh_converter(year):
+    # Check out any necessary licenses
+    print("Checking out Spatial Analyst extension")
+    arcpy.CheckOutExtension("spatial")
+    arcpy.env.overwriteOutput = True
+    
+    # Local variables:
+    BREPS_FireHistory_2024_year_nodisturb_shp = "D:\\Data\\rr_relative_contributions_2024\\fire_histories\\BREPS_FireHistory_2024_" + year + "_nodisturb.shp"
+    BREPS_FireHistory_2024_year_nodisturb_tif = "D:\\Data\\rr_relative_contributions_2024\\fire_histories\\BREPS_FireHistory_2024_" + year + "_nodisturb.tif"
+    BREPS_FireHistory_2024_year_nodisturb_asc = "D:\\Data\\rr_relative_contributions_2024\\fire_histories\\BREPS_FireHistory_2024_" + year + "_nodisturb.asc"
+    
+    # Process: Polygon to Raster (2)
+    arcpy.env.snapRaster = "D:\\Data\\rr_relative_contributions_2024\\data_constant\\vicfh2019"
+    arcpy.env.extent = "2036000 2251970.00000001 2965260.00000001 2842370"
+    
+    print("Converting to raster")
+    arcpy.PolygonToRaster_conversion(BREPS_FireHistory_2024_year_nodisturb_shp, "Burn_Date", BREPS_FireHistory_2024_year_nodisturb_tif, "CELL_CENTER", "NONE", "30")
+
+    # Process: Raster to ASCII
+    print("Converting to ASCII")
+    arcpy.RasterToASCII_conversion(BREPS_FireHistory_2024_year_nodisturb_tif, BREPS_FireHistory_2024_year_nodisturb_asc)
+
+    # Phoenix data converter
+    pdc_path = "C:\\Data\\residual_risk_live\\residual_risk_live_copytoCdrive\\Phoenix Data Converter.exe"  # Change to your path
+    output_date = str(int(year) + 1) + "-02-16 00:00:00"  # Needs to be string format like "2027-06-30 00:00:00"
+    run_app = os.path.normpath(pdc_path)
+    run_asc = os.path.normpath(BREPS_FireHistory_2024_year_nodisturb_asc)
+    run_zip = os.path.normpath("D:\\Data\\rr_relative_contributions_2024\\fire_histories\\BREPS_FireHistory_2024_" + year + "_nodisturb.zip")
+    run_siz = "30"
+    run_dat = output_date
+    
+    print(run_app)
+    command = [run_app, run_asc, run_zip, run_siz, run_dat]
+    
+    # In Python 3, subprocess.call should be used in this way
+    subprocess.call(command)
+    
+    print(command)
+    shutil.copy2("D:\\Data\\rr_relative_contributions_2024\\fire_histories\\BREPS_FireHistory_2024_" + year + "_nodisturb.zip", "C:\\Phoenix\\Data\\State\\data\\rr_relative_contributions_2024")
+    
+    arcpy.CheckInExtension("Spatial")
+
+
+def createProjectFile(year):
+    print("Making project file")
+    
+    projectName = "rr_relative_contributions_2024_" + year + "_nodisturb_130_5km"
+    projectBaseFilename = os.path.join("D:\\Data\\rr_relative_contributions_2024\\data_constant\\baseProject_fdi130_5km2016v2.xml")
+    baseProjectFile = open(projectBaseFilename).read()
+    
+    # Replace variables within the project file template
+    baseProjectFile = baseProjectFile.replace("{rundate}", str(int(year) + 1) + "-02-16")
+    baseProjectFile = baseProjectFile.replace("{fire_history}", "C:\\Phoenix\\data\\State\\data\\rr_relative_contributions_2024\\BREPS_FireHistory_2024_" + year + "_nodisturb.zip")
+    baseProjectFile = baseProjectFile.replace("{projectName}", projectName)
+    
+    # Write the modified content to a new project file
+    projectOutputFilename = os.path.join("D:\\Data\\rr_relative_contributions_2024\\projects\\")
+    
+    with open(projectOutputFilename + projectName + ".xml", "w") as output:
+        output.write(baseProjectFile)
+    
+    shutil.copy2("D:\\Data\\rr_relative_contributions_2024\\projects\\rr_relative_contributions_2024_" + year + "_nodisturb_130_5km.xml", "C:\\Phoenix\\Projects\\rr_relative_contributions_2024\\")
+
+
+# List of years to run the process for
+years_to_run = ["2020", "2021", "2022", "2023", "2024"]
+
+# Loop through each year and run the functions
+for i in years_to_run:
+    print(i)
+    fh_converter(i)
+    createProjectFile(i)
