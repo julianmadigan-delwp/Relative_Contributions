@@ -1,0 +1,51 @@
+import arcpy
+
+# Define the year to process
+Season = 2021
+
+def select(Season):
+    # Local variables:
+    Input = "C:\\Data\\FireHistory\\Fire_History_2025\\Fire_History_2025_Final\\Relative_Contribution\\FRAS_FireHistory_2025.shp"
+    No_Disturbances = "C:\\Data\\FireHistory\\Fire_History_2025\\Fire_History_2025_Final\\Relative_Contribution\\Shapefiles\\FRAS_FireHistory_2025_" + str(Season) + "_nodisturb.shp"
+    Burns_only = "C:\\Data\\FireHistory\\Fire_History_2025\\Fire_History_2025_Final\\Relative_Contribution\\Shapefiles\\FRAS_FireHistory_2025_" + str(Season) + "_burns.shp"
+    Bushfires_only = "C:\\Data\\FireHistory\\Fire_History_2025\\Fire_History_2025_Final\\Relative_Contribution\\Shapefiles\\FRAS_FireHistory_2025_" + str(Season) + "_bushfires.shp"
+
+    # Construct the SQL where clauses
+    where_clause_no_disturbances = (
+        "\"Source\" IN ('NSW', 'SA') AND \"Burn_Date\" < " + str(Season) + '0701'
+        + " OR (\"Source\" IN ('Burns', 'BUSHFIRES', 'LASTLOG25') AND \"Burn_Date\" < " + str(Season - 1) + '0701)'
+    )
+    
+    where_clause_burns_only = (
+        "\"Source\" IN ('NSW', 'SA', 'Burns') AND \"Burn_Date\" < " + str(Season) + '0701'
+        + " OR (\"Source\" IN ('BUSHFIRES', 'LASTLOG25') AND \"Burn_Date\" < " + str(Season - 1) + '0701)'
+    )
+    
+    where_clause_bushfires_only = (
+        "\"Source\" IN ('NSW', 'SA', 'BUSHFIRES') AND \"Burn_Date\" < " + str(Season) + '0701'
+        + " OR (\"Source\" IN ('Burns', 'LASTLOG25') AND \"Burn_Date\" < " + str(Season - 1) + '0701)'
+    )
+
+    # Process: Select No Disturbance
+    arcpy.Select_analysis(
+        Input,
+        No_Disturbances,
+        where_clause_no_disturbances
+    )
+
+    # Process: Select Burns only
+    arcpy.Select_analysis(
+        Input,
+        Burns_only,
+        where_clause_burns_only
+    )
+    
+    # Process: Select Bushfires only
+    arcpy.Select_analysis(
+        Input,
+        Bushfires_only,
+        where_clause_bushfires_only
+    )
+
+# Call the function for the specified year
+select(Season)
